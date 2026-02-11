@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APIPulse — Contract Tester & Health Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0d1117;
+  --surface2: #161b22;
+  --surface3: #1c2330;
+  --border: #21262d;
+  --border2: #30363d;
+  --accent: #00ff88;
+  --accent2: #00bfff;
+  --accent3: #ff6b35;
+  --warn: #f5a623;
+  --error: #ff4757;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #484f58;
+  --get: #00cc66;
+  --post: #0099ff;
+  --put: #ff9900;
+  --delete: #ff3355;
+  --patch: #aa55ff;
+  --glow: 0 0 20px rgba(0,255,136,0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(8,12,16,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  position: relative;
+}
+
+.logo-icon svg { width: 100%; height: 100%; }
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
+.logo-text span { color: var(--accent); }
+
+.logo-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(0,255,136,0.1);
+  border: 1px solid rgba(0,255,136,0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.2px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+}
+
+.btn-primary:hover {
+  background: #00ffaa;
+  box-shadow: 0 0 20px rgba(0,255,136,0.4);
+  transform: translateY(-1px);
+}
+
+.pulse-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── LAYOUT ── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: calc(100vh - 56px);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin-bottom: 12px;
+}
+
+.url-input-wrap {
+  position: relative;
+}
+
+.url-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 10px 8px 32px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.url-input::placeholder { color: var(--text3); }
+.url-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,255,136,0.1); }
+
+.url-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3);
+  font-size: 14px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.method-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+  opacity: 0.4;
+}
+
+.method-tag.active { opacity: 1; }
+.method-tag.GET { color: var(--get); border-color: var(--get); background: rgba(0,204,102,0.08); }
+.method-tag.POST { color: var(--post); border-color: var(--post); background: rgba(0,153,255,0.08); }
+.method-tag.PUT { color: var(--put); border-color: var(--put); background: rgba(255,153,0,0.08); }
+.method-tag.DELETE { color: var(--delete); border-color: var(--delete); background: rgba(255,51,85,0.08); }
+.method-tag.PATCH { color: var(--patch); border-color: var(--patch); background: rgba(170,85,255,0.08); }
+
+.endpoints-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.endpoints-list::-webkit-scrollbar { width: 4px; }
+.endpoints-list::-webkit-scrollbar-track { background: transparent; }
+.endpoints-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.endpoint-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.endpoint-item:hover {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+.endpoint-item.active {
+  background: rgba(0,255,136,0.06);
+  border-color: rgba(0,255,136,0.2);
+}
+
+.endpoint-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.method-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 46px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.badge-GET { color: var(--get); background: rgba(0,204,102,0.12); }
+.badge-POST { color: var(--post); background: rgba(0,153,255,0.12); }
+.badge-PUT { color: var(--put); background: rgba(255,153,0,0.12); }
+.badge-DELETE { color: var(--delete); background: rgba(255,51,85,0.12); }
+.badge-PATCH { color: var(--patch); background: rgba(170,85,255,0.12); }
+
+.endpoint-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endpoint-item.active .endpoint-path { color: var(--text); }
+
+.status-circle {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-ok { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.status-warn { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.status-error { background: var(--error); box-shadow: 0 0 6px var(--error); }
+.status-idle { background: var(--text3); }
+
+.latency-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+.latency-badge.fast { color: var(--get); }
+.latency-badge.medium { color: var(--warn); }
+.latency-badge.slow { color: var(--error); }
+
+/* ── MAIN CONTENT ── */
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.stat-card {
+  flex: 1;
+  padding: 14px 20px;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:last-child { border-right: none; }
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-value.green { color: var(--accent); }
+.stat-value.blue { color: var(--accent2); }
+.stat-value.orange { color: var(--warn); }
+.stat-value.red { color: var(--error); }
+
+.stat-sub {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-trend {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 24px;
+}
+
+.bar {
+  width: 3px;
+  background: rgba(0,255,136,0.2);
+  border-radius: 2px;
+  transition: height 0.3s;
+}
+
+/* ── PANEL ── */
+.panel-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  background: var(--surface);
+}
+
+.tab {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 12px 16px;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--text2); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.panel-body::-webkit-scrollbar { width: 4px; }
+.panel-body::-webkit-scrollbar-track { background: transparent; }
+.panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── REQUEST TESTER ── */
+.request-tester {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tester-url-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.method-select {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 0 12px;
+  cursor: pointer;
+  outline: none;
+  min-width: 90px;
+  transition: border-color 0.2s;
+}
+
+.method-select:focus { border-color: var(--accent); }
+
+.full-url-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.full-url-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,255,136,0.1); }
+.full-url-input::placeholder { color: var(--text3); }
+
+.send-btn {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.send-btn:hover {
+  background: #00ffaa;
+  box-shadow: 0 0 20px rgba(0,255,136,0.4);
+  transform: translateY(-1px);
+}
+
+.send-btn.loading {
+  background: var(--surface3);
+  color: var(--text3);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* HEADERS / BODY EDITOR */
+.params-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.params-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.params-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+}
+
+.params-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  background: var(--surface3);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.param-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.param-row:last-child { border-bottom: none; }
+
+.param-input {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.param-input:focus { border-color: var(--accent2); }
+.param-input::placeholder { color: var(--text3); }
+
+.remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.remove-btn:hover { background: rgba(255,71,87,0.15); color: var(--error); }
+
+.add-param-btn {
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 8px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  transition: color 0.15s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.add-param-btn:hover { color: var(--accent); }
+
+.body-textarea {
+  width: 100%;
+  background: var(--surface3);
+  border: none;
+  padding: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  resize: vertical;
+  min-height: 120px;
+  outline: none;
+  line-height: 1.6;
+}
+
+/* ── RESPONSE PANEL ── */
+.response-panel {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.response-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface3);
+}
+
+.response-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 5px;
+}
+
+.status-2xx { color: var(--accent); background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.2); }
+.status-4xx { color: var(--error); background: rgba(255,71,87,0.1); border: 1px solid rgba(255,71,87,0.2); }
+.status-5xx { color: var(--warn); background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.2); }
+.status-pending { color: var(--text3); background: var(--surface2); border: 1px solid var(--border); }
+
+.response-meta {
+  display: flex;
+  gap: 16px;
+}
+
+.meta-item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.meta-item span { color: var(--text2); }
+
+.response-body {
+  padding: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--text2);
+  overflow-x: auto;
+  min-height: 80px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+/* JSON Syntax highlighting */
+.json-key { color: #79c0ff; }
+.json-string { color: #a5d6ff; }
+.json-number { color: #ffa657; }
+.json-bool { color: var(--accent); }
+.json-null { color: var(--text3); }
+
+/* ── CONTRACT VIEW ── */
+.contract-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contract-paste-area {
+  background: var(--surface2);
+  border: 1px dashed var(--border2);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.contract-paste-area:hover {
+  border-color: var(--accent);
+  background: rgba(0,255,136,0.03);
+}
+
+.contract-paste-area.has-content {
+  text-align: left;
+  cursor: default;
+  border-style: solid;
+  border-color: rgba(0,255,136,0.2);
+  padding: 0;
+}
+
+.contract-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  resize: vertical;
+  min-height: 200px;
+  outline: none;
+  line-height: 1.6;
+}
+
+.paste-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.paste-icon { font-size: 28px; color: var(--text3); }
+
+.paste-text {
+  font-size: 13px;
+  color: var(--text2);
+  font-weight: 600;
+}
+
+.paste-sub {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.format-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── SCHEMA TREE ── */
+.schema-tree {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.schema-tree-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.schema-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+}
+
+.schema-item {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.schema-item:last-child { border-bottom: none; }
+.schema-item:hover { background: var(--surface3); }
+
+.schema-name { color: var(--accent2); }
+.schema-type { color: var(--text3); font-size: 10px; }
+.schema-required { color: var(--error); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-left: auto; }
+.schema-optional { color: var(--text3); font-size: 9px; margin-left: auto; }
+
+/* ── MOCK GENERATOR ── */
+.mock-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mock-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mock-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mock-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mock-body {
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.7;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ── HISTORY ── */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-item:hover { border-color: var(--accent2); background: rgba(0,191,255,0.03); }
+
+.history-method { min-width: 50px; }
+
+.history-url {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.history-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; min-width: 36px; text-align: right; }
+.hist-ok { color: var(--accent); }
+.hist-err { color: var(--error); }
+.hist-warn { color: var(--warn); }
+
+/* ── DIFF VIEWER ── */
+.diff-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.diff-header-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.diff-pane {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.diff-pane-header {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-version-a { color: var(--error); }
+.diff-version-b { color: var(--accent); }
+
+.diff-pane textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  resize: vertical;
+  min-height: 150px;
+  outline: none;
+  line-height: 1.6;
+}
+
+.diff-result {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.diff-result-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+}
+
+.diff-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 0 16px;
+  display: block;
+  white-space: pre;
+}
+
+.diff-added { color: var(--accent); background: rgba(0,255,136,0.06); }
+.diff-removed { color: var(--error); background: rgba(255,71,87,0.06); text-decoration: line-through; }
+.diff-unchanged { color: var(--text3); }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  opacity: 0.5;
+}
+
+.empty-icon { font-size: 40px; }
+.empty-text { font-size: 13px; color: var(--text3); text-align: center; font-family: 'JetBrains Mono', monospace; }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+
+/* SPINNER */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.endpoint-item { animation: fadeIn 0.3s ease both; }
+
+/* MINI CHART */
+.sparkline { display: flex; align-items: flex-end; gap: 2px; height: 28px; }
+.sparkline-bar {
+  width: 4px;
+  background: rgba(0,255,136,0.4);
+  border-radius: 2px;
+  transition: height 0.5s ease;
+}
+.sparkline-bar:hover { background: var(--accent); }
+
+/* CONTRACT PARSE RESULT */
+.parse-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 10px 14px;
+  background: rgba(0,255,136,0.06);
+  border: 1px solid rgba(0,255,136,0.15);
+  border-radius: 6px;
+}
+
+/* BADGE */
+.feature-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.badge-new { color: var(--accent2); border-color: rgba(0,191,255,0.3); background: rgba(0,191,255,0.08); }
+.badge-beta { color: var(--warn); border-color: rgba(245,166,35,0.3); background: rgba(245,166,35,0.08); }
+
+/* TOOLTIP */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 99;
+}
+
+[data-tip]:hover::after { opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="14" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.4"/>
+        <circle cx="16" cy="16" r="9" stroke="#00ff88" stroke-width="1.5"/>
+        <circle cx="16" cy="16" r="3" fill="#00ff88"/>
+        <line x1="16" y1="7" x2="16" y2="4" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="25" y1="16" x2="28" y2="16" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="16" y1="25" x2="16" y2="28" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="7" y1="16" x2="4" y2="16" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="logo-text">API<span>Pulse</span></span>
+    <span class="logo-badge">v1.0</span>
+  </div>
+  <div class="topbar-actions">
+    <div class="pulse-dot"></div>
+    <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">LIVE</span>
+    <button class="btn btn-ghost" onclick="loadSampleAPI()">⚡ Carregar Exemplo</button>
+    <button class="btn btn-primary" onclick="exportCollection()">↗ Exportar</button>
+  </div>
+</header>
+
+<!-- APP LAYOUT -->
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Endpoints</div>
+      <div class="url-input-wrap">
+        <span class="url-icon">🔍</span>
+        <input class="url-input" type="text" placeholder="Filtrar endpoints..." id="filterInput" oninput="filterEndpoints(this.value)">
+      </div>
+      <div class="filter-row" id="methodFilters">
+        <span class="method-tag GET active" onclick="toggleMethodFilter('GET',this)">GET</span>
+        <span class="method-tag POST active" onclick="toggleMethodFilter('POST',this)">POST</span>
+        <span class="method-tag PUT active" onclick="toggleMethodFilter('PUT',this)">PUT</span>
+        <span class="method-tag DELETE active" onclick="toggleMethodFilter('DELETE',this)">DEL</span>
+        <span class="method-tag PATCH active" onclick="toggleMethodFilter('PATCH',this)">PATCH</span>
+      </div>
+    </div>
+    <div class="endpoints-list" id="endpointsList">
+      <div class="empty-state" style="height:200px;">
+        <div class="empty-icon">📡</div>
+        <div class="empty-text">Carregue um contrato<br>ou adicione endpoints</div>
+      </div>
+    </div>
+    <div style="padding:12px;border-top:1px solid var(--border);">
+      <button class="btn btn-ghost" style="width:100%;font-size:12px;" onclick="addEndpoint()">+ Adicionar Endpoint</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Endpoints</div>
+        <div class="stat-value blue" id="totalEndpoints">0</div>
+        <div class="stat-sub" id="endpointBreakdown">— carregando</div>
+        <div class="stat-trend" id="trend1"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Latência Média</div>
+        <div class="stat-value green" id="avgLatency">—</div>
+        <div class="stat-sub" id="latencyStatus">aguardando requisições</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Taxa de Sucesso</div>
+        <div class="stat-value green" id="successRate">—</div>
+        <div class="stat-sub" id="requestCount">0 requisições</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Erros</div>
+        <div class="stat-value red" id="errorCount">0</div>
+        <div class="stat-sub" id="errorSub">últimos 5 min</div>
+      </div>
+    </div>
+
+    <!-- PANEL TABS -->
+    <div class="panel-tabs">
+      <div class="tab active" onclick="switchTab('tester',this)">🚀 Tester</div>
+      <div class="tab" onclick="switchTab('contract',this)">📄 Contrato</div>
+      <div class="tab" onclick="switchTab('mock',this)">🎭 Mock <span class="feature-badge badge-new">NEW</span></div>
+      <div class="tab" onclick="switchTab('history',this)">🕐 Histórico</div>
+      <div class="tab" onclick="switchTab('diff',this)">⚡ Diff <span class="feature-badge badge-beta">BETA</span></div>
+    </div>
+
+    <!-- PANEL BODY -->
+    <div class="panel-body" id="panelBody">
+      <!-- TESTER TAB -->
+      <div id="tab-tester" class="request-tester">
+        <div class="tester-url-row">
+          <select class="method-select" id="reqMethod" onchange="updateMethodColor()">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+            <option value="PATCH">PATCH</option>
+          </select>
+          <input class="full-url-input" type="text" id="reqUrl" placeholder="https://api.exemplo.com/v1/users" />
+          <button class="send-btn" id="sendBtn" onclick="sendRequest()">
+            <span id="sendBtnIcon">▶</span>
+            <span id="sendBtnText">Enviar</span>
+          </button>
+        </div>
+
+        <!-- Headers -->
+        <div class="params-section">
+          <div class="params-header">
+            <span class="params-title">Headers</span>
+            <span class="params-count" id="headersCount">0</span>
+          </div>
+          <div id="headerRows"></div>
+          <button class="add-param-btn" onclick="addParamRow('headerRows','headersCount')">+ Adicionar Header</button>
+        </div>
+
+        <!-- Query Params -->
+        <div class="params-section">
+          <div class="params-header">
+            <span class="params-title">Query Params</span>
+            <span class="params-count" id="queryCount">0</span>
+          </div>
+          <div id="queryRows"></div>
+          <button class="add-param-btn" onclick="addParamRow('queryRows','queryCount')">+ Adicionar Parâmetro</button>
+        </div>
+
+        <!-- Body -->
+        <div class="params-section">
+          <div class="params-header">
+            <span class="params-title">Body (JSON)</span>
+            <span class="params-count" id="bodyCount">raw</span>
+          </div>
+          <textarea class="body-textarea" id="reqBody" placeholder='{"key": "value"}'></textarea>
+        </div>
+
+        <!-- Response -->
+        <div>
+          <div class="section-label">Resposta</div>
+          <div class="response-panel">
+            <div class="response-header">
+              <div class="response-status">
+                <span class="status-code status-pending" id="resStatus">Aguardando</span>
+              </div>
+              <div class="response-meta">
+                <div class="meta-item">Tempo: <span id="resTime">—</span></div>
+                <div class="meta-item">Tamanho: <span id="resSize">—</span></div>
+              </div>
+            </div>
+            <pre class="response-body" id="resBody">// Faça uma requisição para ver a resposta aqui</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTRACT TAB (hidden) -->
+      <div id="tab-contract" class="contract-section" style="display:none;">
+        <div class="section-label">Cole seu Contrato OpenAPI / JSON Schema / GraphQL SDL</div>
+        <div class="contract-paste-area has-content">
+          <textarea class="contract-textarea" id="contractInput" placeholder='Cole aqui seu OpenAPI 3.0, Swagger 2.0 ou JSON Schema...' oninput="parseContract()"></textarea>
+        </div>
+        <div id="contractParseResult"></div>
+        <div id="contractSchemaTree"></div>
+      </div>
+
+      <!-- MOCK TAB (hidden) -->
+      <div id="tab-mock" class="mock-section" style="display:none;">
+        <div class="section-label">Mocks Gerados Automaticamente</div>
+        <div id="mockCards">
+          <div class="empty-state" style="height:200px;">
+            <div class="empty-icon">🎭</div>
+            <div class="empty-text">Carregue um contrato para<br>gerar mocks automáticos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY TAB (hidden) -->
+      <div id="tab-history" style="display:none;">
+        <div class="section-label">Histórico de Requisições</div>
+        <div class="history-list" id="historyList">
+          <div class="empty-state" style="height:200px;">
+            <div class="empty-icon">🕐</div>
+            <div class="empty-text">Nenhuma requisição ainda</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIFF TAB (hidden) -->
+      <div id="tab-diff" class="diff-section" style="display:none;">
+        <div class="section-label">Compare versões de contratos / respostas</div>
+        <div class="diff-header-row">
+          <div class="diff-pane">
+            <div class="diff-pane-header"><span class="diff-version-a">◀ Versão A</span> (anterior)</div>
+            <textarea id="diffA" placeholder='Cole versão antiga...' oninput="computeDiff()"></textarea>
+          </div>
+          <div class="diff-pane">
+            <div class="diff-pane-header"><span class="diff-version-b">Versão B ▶</span> (nova)</div>
+            <textarea id="diffB" placeholder='Cole versão nova...' oninput="computeDiff()"></textarea>
+          </div>
+        </div>
+        <div class="diff-result" id="diffResult" style="display:none;">
+          <div class="diff-result-header">Diferenças</div>
+          <div style="padding:12px 0;" id="diffLines"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  APIPulse — State
+// ═══════════════════════════════════════════════
+const state = {
+  endpoints: [],
+  selectedIndex: -1,
+  history: [],
+  totalRequests: 0,
+  successRequests: 0,
+  errorRequests: 0,
+  latencies: [],
+  activeFilters: new Set(['GET','POST','PUT','DELETE','PATCH']),
+};
+
+// ═══════════════════════════════════════════════
+//  SAMPLE API
+// ═══════════════════════════════════════════════
+const SAMPLE_API = {
+  endpoints: [
+    { method:'GET',    path:'/v1/users',          desc:'Lista todos os usuários',      tag:'Users' },
+    { method:'POST',   path:'/v1/users',          desc:'Cria um novo usuário',         tag:'Users' },
+    { method:'GET',    path:'/v1/users/{id}',     desc:'Busca usuário por ID',         tag:'Users' },
+    { method:'PUT',    path:'/v1/users/{id}',     desc:'Atualiza usuário',             tag:'Users' },
+    { method:'DELETE', path:'/v1/users/{id}',     desc:'Remove usuário',               tag:'Users' },
+    { method:'GET',    path:'/v1/products',       desc:'Lista produtos',               tag:'Products' },
+    { method:'POST',   path:'/v1/products',       desc:'Cria produto',                 tag:'Products' },
+    { method:'PATCH',  path:'/v1/products/{id}',  desc:'Atualiza parcialmente',        tag:'Products' },
+    { method:'GET',    path:'/v1/orders',         desc:'Lista pedidos',                tag:'Orders' },
+    { method:'POST',   path:'/v1/orders',         desc:'Cria pedido',                  tag:'Orders' },
+    { method:'GET',    path:'/v1/orders/{id}',    desc:'Detalhes do pedido',           tag:'Orders' },
+    { method:'GET',    path:'/v1/health',         desc:'Status da API',                tag:'System' },
+  ],
+  contract: `{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample Commerce API",
+    "version": "1.0.0",
+    "description": "API de exemplo para APIPulse"
+  },
+  "servers": [
+    { "url": "https://api.exemplo.com" }
+  ],
+  "paths": {
+    "/v1/users": {
+      "get": {
+        "summary": "Lista usuários",
+        "tags": ["Users"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "summary": "Cria usuário",
+        "tags": ["Users"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name","email"],
+                "properties": {
+                  "name":  { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "role":  { "type": "string", "enum": ["admin","user"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "summary": "Health check",
+        "tags": ["System"]
+      }
+    }
+  }
+}`
+};
+
+// ═══════════════════════════════════════════════
+//  LOAD SAMPLE
+// ═══════════════════════════════════════════════
+function loadSampleAPI() {
+  state.endpoints = SAMPLE_API.endpoints.map(e => ({
+    ...e,
+    status: 'idle',
+    latency: null,
+  }));
+  renderEndpoints();
+  updateStats();
+  document.getElementById('contractInput').value = SAMPLE_API.contract;
+  parseContract();
+  generateMocks();
+  if(state.selectedIndex === -1) selectEndpoint(0);
+}
+
+// ═══════════════════════════════════════════════
+//  ENDPOINTS
+// ═══════════════════════════════════════════════
+function renderEndpoints(filter = '') {
+  const list = document.getElementById('endpointsList');
+  const filtered = state.endpoints.filter(e => {
+    const matchText = !filter || e.path.toLowerCase().includes(filter.toLowerCase());
+    const matchMethod = state.activeFilters.has(e.method);
+    return matchText && matchMethod;
+  });
+
+  if(filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="height:200px;"><div class="empty-icon">📡</div><div class="empty-text">Nenhum endpoint<br>encontrado</div></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((e, i) => {
+    const realIdx = state.endpoints.indexOf(e);
+    const statusClass = e.status === 'ok' ? 'status-ok' : e.status === 'error' ? 'status-error' : e.status === 'warn' ? 'status-warn' : 'status-idle';
+    const latencyClass = e.latency ? (e.latency < 300 ? 'fast' : e.latency < 800 ? 'medium' : 'slow') : '';
+    const latencyText = e.latency ? e.latency + 'ms' : '';
+    const active = realIdx === state.selectedIndex ? 'active' : '';
+    return `<div class="endpoint-item ${active}" onclick="selectEndpoint(${realIdx})" style="animation-delay:${i*0.04}s">
+      <span class="method-badge badge-${e.method}">${e.method}</span>
+      <span class="endpoint-path" data-tip="${e.desc || ''}">${e.path}</span>
+      ${latencyText ? `<span class="latency-badge ${latencyClass}">${latencyText}</span>` : ''}
+      <span class="status-circle ${statusClass}"></span>
+    </div>`;
+  }).join('');
+}
+
+function selectEndpoint(idx) {
+  state.selectedIndex = idx;
+  const ep = state.endpoints[idx];
+  if(!ep) return;
+
+  document.getElementById('reqMethod').value = ep.method;
+  document.getElementById('reqUrl').value = `https://api.exemplo.com${ep.path}`;
+  updateMethodColor();
+  renderEndpoints(document.getElementById('filterInput').value);
+}
+
+function addEndpoint() {
+  const path = prompt('Caminho do endpoint (ex: /v1/users):');
+  if(!path) return;
+  const method = prompt('Método (GET/POST/PUT/DELETE/PATCH):', 'GET').toUpperCase();
+  state.endpoints.push({ method, path, desc: '', status: 'idle', latency: null });
+  renderEndpoints();
+  updateStats();
+  selectEndpoint(state.endpoints.length - 1);
+}
+
+function filterEndpoints(val) {
+  renderEndpoints(val);
+}
+
+function toggleMethodFilter(method, el) {
+  if(state.activeFilters.has(method)) {
+    state.activeFilters.delete(method);
+    el.classList.remove('active');
+  } else {
+    state.activeFilters.add(method);
+    el.classList.add('active');
+  }
+  renderEndpoints(document.getElementById('filterInput').value);
+}
+
+// ═══════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════
+function updateStats() {
+  const total = state.endpoints.length;
+  document.getElementById('totalEndpoints').textContent = total;
+  const methods = {};
+  state.endpoints.forEach(e => { methods[e.method] = (methods[e.method]||0)+1; });
+  const breakdown = Object.entries(methods).map(([m,n]) => `${n} ${m}`).join(' · ');
+  document.getElementById('endpointBreakdown').textContent = breakdown || '—';
+
+  if(state.latencies.length > 0) {
+    const avg = Math.round(state.latencies.reduce((a,b)=>a+b,0)/state.latencies.length);
+    document.getElementById('avgLatency').textContent = avg + 'ms';
+    document.getElementById('latencyStatus').textContent = avg < 300 ? '✓ rápido' : avg < 800 ? '⚠ moderado' : '✗ lento';
+  }
+
+  if(state.totalRequests > 0) {
+    const rate = Math.round((state.successRequests / state.totalRequests) * 100);
+    document.getElementById('successRate').textContent = rate + '%';
+    document.getElementById('successRate').className = 'stat-value ' + (rate >= 90 ? 'green' : rate >= 70 ? 'orange' : 'red');
+    document.getElementById('requestCount').textContent = state.totalRequests + ' requisições';
+  }
+
+  document.getElementById('errorCount').textContent = state.errorRequests;
+
+  // Sparkline
+  const trend = document.getElementById('trend1');
+  const vals = [2,3,3,4,3,5,4,6,5,8,7,total||1];
+  trend.innerHTML = vals.map(v => {
+    const h = Math.max(4, Math.round((v/Math.max(...vals))*24));
+    return `<div class="bar" style="height:${h}px"></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  REQUEST TESTER
+// ═══════════════════════════════════════════════
+let paramRowCounters = { headerRows: 0, queryRows: 0 };
+
+function addParamRow(containerId, counterId) {
+  const container = document.getElementById(containerId);
+  const id = ++paramRowCounters[containerId];
+  const row = document.createElement('div');
+  row.className = 'param-row';
+  row.id = `row-${containerId}-${id}`;
+  row.innerHTML = `
+    <input class="param-input" placeholder="chave" id="key-${containerId}-${id}">
+    <input class="param-input" placeholder="valor" id="val-${containerId}-${id}">
+    <button class="remove-btn" onclick="removeRow('${containerId}','${id}','${counterId}')">×</button>
+  `;
+  container.appendChild(row);
+  updateCount(containerId, counterId);
+}
+
+function removeRow(containerId, id, counterId) {
+  document.getElementById(`row-${containerId}-${id}`)?.remove();
+  updateCount(containerId, counterId);
+}
+
+function updateCount(containerId, counterId) {
+  const count = document.getElementById(containerId).querySelectorAll('.param-row').length;
+  document.getElementById(counterId).textContent = count;
+}
+
+function updateMethodColor() {
+  const method = document.getElementById('reqMethod').value;
+  const colors = { GET:'var(--get)', POST:'var(--post)', PUT:'var(--put)', DELETE:'var(--delete)', PATCH:'var(--patch)' };
+  document.getElementById('reqMethod').style.color = colors[method] || 'var(--accent)';
+}
+
+async function sendRequest() {
+  const method = document.getElementById('reqMethod').value;
+  const url = document.getElementById('reqUrl').value.trim();
+  if(!url) { alert('Digite uma URL!'); return; }
+
+  const btn = document.getElementById('sendBtn');
+  btn.classList.add('loading');
+  document.getElementById('sendBtnIcon').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('sendBtnText').textContent = 'Enviando...';
+  document.getElementById('resStatus').textContent = '...';
+  document.getElementById('resStatus').className = 'status-code status-pending';
+  document.getElementById('resBody').textContent = '// aguardando resposta...';
+
+  const startTime = Date.now();
+
+  try {
+    const headers = {};
+    document.getElementById('headerRows').querySelectorAll('.param-row').forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      if(inputs[0].value && inputs[1].value) headers[inputs[0].value] = inputs[1].value;
+    });
+
+    let queryStr = '';
+    const queryParams = [];
+    document.getElementById('queryRows').querySelectorAll('.param-row').forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      if(inputs[0].value) queryParams.push(`${inputs[0].value}=${inputs[1].value}`);
+    });
+    if(queryParams.length) queryStr = '?' + queryParams.join('&');
+
+    const options = { method, headers: { 'Content-Type':'application/json', ...headers } };
+    const bodyVal = document.getElementById('reqBody').value.trim();
+    if(bodyVal && method !== 'GET' && method !== 'DELETE') options.body = bodyVal;
+
+    const res = await fetch(url + queryStr, options);
+    const elapsed = Date.now() - startTime;
+    const text = await res.text();
+    let displayed = text;
+
+    try {
+      const json = JSON.parse(text);
+      displayed = syntaxHighlight(JSON.stringify(json, null, 2));
+    } catch(e) { /* not JSON */ }
+
+    const size = new Blob([text]).size;
+    const sizeStr = size > 1024 ? (size/1024).toFixed(1)+'KB' : size+'B';
+
+    document.getElementById('resTime').textContent = elapsed + 'ms';
+    document.getElementById('resSize').textContent = sizeStr;
+
+    const statusEl = document.getElementById('resStatus');
+    statusEl.textContent = res.status + ' ' + res.statusText;
+    if(res.status >= 200 && res.status < 300) {
+      statusEl.className = 'status-code status-2xx';
+    } else if(res.status >= 400 && res.status < 500) {
+      statusEl.className = 'status-code status-4xx';
+    } else {
+      statusEl.className = 'status-code status-5xx';
+    }
+
+    document.getElementById('resBody').innerHTML = displayed;
+
+    // Update endpoint status
+    if(state.selectedIndex >= 0) {
+      const ep = state.endpoints[state.selectedIndex];
+      ep.status = res.ok ? 'ok' : 'error';
+      ep.latency = elapsed;
+      state.latencies.push(elapsed);
+    }
+
+    // Track stats
+    state.totalRequests++;
+    if(res.ok) state.successRequests++;
+    else state.errorRequests++;
+
+    // Add to history
+    addToHistory(method, url, res.status, elapsed, res.ok);
+
+  } catch(err) {
+    const elapsed = Date.now() - startTime;
+    document.getElementById('resStatus').textContent = 'ERRO';
+    document.getElementById('resStatus').className = 'status-code status-4xx';
+    document.getElementById('resBody').textContent = '// Erro de conexão:\n// ' + err.message + '\n\n// Nota: Para testar APIs reais, certifique-se\n// que o servidor permite CORS neste domínio.';
+    document.getElementById('resTime').textContent = elapsed + 'ms';
+
+    if(state.selectedIndex >= 0) {
+      state.endpoints[state.selectedIndex].status = 'error';
+      state.endpoints[state.selectedIndex].latency = elapsed;
+    }
+    state.totalRequests++;
+    state.errorRequests++;
+    addToHistory(method, url, 0, elapsed, false);
+  }
+
+  btn.classList.remove('loading');
+  document.getElementById('sendBtnIcon').textContent = '▶';
+  document.getElementById('sendBtnText').textContent = 'Enviar';
+  renderEndpoints(document.getElementById('filterInput').value);
+  updateStats();
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    let cls = 'json-number';
+    if (/^"/.test(match)) {
+      cls = /:$/.test(match) ? 'json-key' : 'json-string';
+    } else if (/true|false/.test(match)) {
+      cls = 'json-bool';
+    } else if (/null/.test(match)) {
+      cls = 'json-null';
+    }
+    return `<span class="${cls}">${match}</span>`;
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════
+function addToHistory(method, url, status, latency, ok) {
+  const now = new Date();
+  const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  state.history.unshift({ method, url, status, latency, ok, time });
+  if(state.history.length > 50) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if(state.history.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="height:200px;"><div class="empty-icon">🕐</div><div class="empty-text">Nenhuma requisição ainda</div></div>`;
+    return;
+  }
+  list.innerHTML = state.history.map(h => {
+    const latencyClass = h.latency < 300 ? 'fast' : h.latency < 800 ? 'medium' : 'slow';
+    const statusClass = h.ok ? 'hist-ok' : h.status === 0 ? 'hist-err' : h.status >= 400 ? 'hist-err' : 'hist-warn';
+    const statusText = h.status === 0 ? 'ERR' : h.status.toString();
+    const shortUrl = h.url.replace('https://','').replace('http://','');
+    return `<div class="history-item" onclick="replayHistory(${state.history.indexOf(h)})">
+      <span class="method-badge badge-${h.method}" style="min-width:50px;">${h.method}</span>
+      <span class="history-url" title="${h.url}">${shortUrl}</span>
+      <span class="latency-badge ${latencyClass}">${h.latency}ms</span>
+      <span class="history-time">${h.time}</span>
+      <span class="history-status ${statusClass}">${statusText}</span>
+    </div>`;
+  }).join('');
+}
+
+function replayHistory(idx) {
+  const h = state.history[idx];
+  document.getElementById('reqMethod').value = h.method;
+  document.getElementById('reqUrl').value = h.url;
+  updateMethodColor();
+  switchTab('tester', document.querySelector('.tab'));
+}
+
+// ═══════════════════════════════════════════════
+//  CONTRACT PARSER
+// ═══════════════════════════════════════════════
+function parseContract() {
+  const input = document.getElementById('contractInput').value.trim();
+  const resultEl = document.getElementById('contractParseResult');
+  const treeEl = document.getElementById('contractSchemaTree');
+
+  if(!input) { resultEl.innerHTML = ''; treeEl.innerHTML = ''; return; }
+
+  try {
+    const contract = JSON.parse(input);
+    const paths = contract.paths || {};
+    const endpointsFromContract = [];
+
+    Object.entries(paths).forEach(([path, methods]) => {
+      Object.entries(methods).forEach(([method, details]) => {
+        if(['get','post','put','delete','patch','options','head'].includes(method)) {
+          endpointsFromContract.push({
+            method: method.toUpperCase(),
+            path,
+            desc: details.summary || '',
+            tag: (details.tags && details.tags[0]) || 'Default',
+            status: 'idle',
+            latency: null,
+          });
+        }
+      });
+    });
+
+    if(endpointsFromContract.length > 0) {
+      state.endpoints = endpointsFromContract;
+      renderEndpoints();
+      updateStats();
+      if(state.selectedIndex === -1 || !state.endpoints[state.selectedIndex]) selectEndpoint(0);
+    }
+
+    // Parse schemas
+    const schemas = contract.components?.schemas || contract.definitions || {};
+    const schemaCount = Object.keys(schemas).length;
+    const endpointCount = endpointsFromContract.length;
+    const info = contract.info || {};
+
+    resultEl.innerHTML = `<div class="parse-success">
+      ✓ Contrato parseado com sucesso — ${info.title || 'API'} ${info.version || ''}
+      &nbsp;·&nbsp; ${endpointCount} endpoints encontrados
+      &nbsp;·&nbsp; ${schemaCount} schemas
+    </div>`;
+
+    if(schemaCount > 0) {
+      const items = Object.entries(schemas).map(([name, schema]) => {
+        const props = Object.entries(schema.properties || {});
+        const required = schema.required || [];
+        const propsHtml = props.map(([p, def]) => `
+          <div class="schema-item" style="padding-left:28px;">
+            <span class="schema-name">${p}</span>
+            <span class="schema-type">${def.type || def.$ref?.split('/').pop() || 'any'}</span>
+            <span class="${required.includes(p) ? 'schema-required' : 'schema-optional'}">${required.includes(p) ? 'required' : 'optional'}</span>
+          </div>`).join('');
+        return `
+          <div class="schema-item" style="cursor:default;background:var(--surface3);">
+            <span style="color:var(--warn);font-size:11px;font-family:'JetBrains Mono',monospace;">⬡ ${name}</span>
+            <span class="schema-type" style="margin-left:8px;">${props.length} props</span>
+          </div>
+          ${propsHtml}`;
+      }).join('');
+
+      treeEl.innerHTML = `<div class="schema-tree" style="margin-top:12px;">
+        <div class="schema-tree-header">
+          <span class="schema-section-title">Schemas / Models</span>
+          <span class="params-count">${schemaCount}</span>
+        </div>
+        ${items}
+      </div>`;
+    }
+
+    generateMocks();
+
+  } catch(e) {
+    resultEl.innerHTML = `<div style="padding:10px 14px;color:var(--error);font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(255,71,87,0.06);border:1px solid rgba(255,71,87,0.2);border-radius:6px;">
+      ✗ JSON inválido: ${e.message}
+    </div>`;
+    treeEl.innerHTML = '';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  MOCK GENERATOR
+// ═══════════════════════════════════════════════
+function generateMocks() {
+  const cards = document.getElementById('mockCards');
+  if(state.endpoints.length === 0) return;
+
+  const mockData = {
+    GET: { user: { id: "usr_01J4X9Z", name: "Maria Silva", email: "maria@exemplo.com", role: "admin", createdAt: "2024-01-15T10:30:00Z" } },
+    POST: { success: true, data: { id: "usr_01J4X9Z", name: "Novo Usuário" }, message: "Criado com sucesso" },
+    PUT: { success: true, data: { id: "usr_01J4X9Z", updated: true }, message: "Atualizado com sucesso" },
+    DELETE: { success: true, message: "Removido com sucesso" },
+    PATCH: { success: true, patched: ["name","email"], message: "Atualização parcial aplicada" },
+  };
+
+  const samples = state.endpoints.slice(0,5).map(e => {
+    const mock = mockData[e.method] || { data: "mock response" };
+    const highlighted = syntaxHighlight(JSON.stringify(mock, null, 2));
+    return `<div class="mock-card">
+      <div class="mock-card-header">
+        <div class="mock-title">
+          <span class="method-badge badge-${e.method}">${e.method}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);">${e.path}</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;" onclick="copyMock(${JSON.stringify(JSON.stringify(mock)).slice(1,-1)})">Copiar</button>
+        </div>
+      </div>
+      <pre class="mock-body">${highlighted}</pre>
+    </div>`;
+  }).join('');
+
+  cards.innerHTML = samples;
+}
+
+function copyMock(json) {
+  navigator.clipboard.writeText(json).then(() => {
+    // subtle feedback
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  DIFF ENGINE
+// ═══════════════════════════════════════════════
+function computeDiff() {
+  const a = document.getElementById('diffA').value.split('\n');
+  const b = document.getElementById('diffB').value.split('\n');
+  if(!document.getElementById('diffA').value && !document.getElementById('diffB').value) return;
+
+  const resultEl = document.getElementById('diffResult');
+  const linesEl = document.getElementById('diffLines');
+  resultEl.style.display = 'block';
+
+  const aSet = new Set(a);
+  const bSet = new Set(b);
+  const all = [...new Set([...a,...b])];
+
+  const lines = b.map(line => {
+    if(!aSet.has(line)) return `<span class="diff-line diff-added">+ ${line}</span>`;
+    return `<span class="diff-line diff-unchanged">  ${line}</span>`;
+  }).concat(
+    a.filter(line => !bSet.has(line)).map(line =>
+      `<span class="diff-line diff-removed">- ${line}</span>`
+    )
+  );
+
+  linesEl.innerHTML = lines.join('');
+}
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+function switchTab(name, clickedEl) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+
+  if(clickedEl) {
+    const allTabs = document.querySelectorAll('.tab');
+    allTabs.forEach(t => {
+      if(t.textContent.toLowerCase().includes(name) || t.onclick?.toString().includes(name)) {
+        t.classList.add('active');
+      }
+    });
+    clickedEl.classList.add('active');
+  }
+
+  const tabEl = document.getElementById('tab-' + name);
+  if(tabEl) {
+    tabEl.style.display = '';
+  } else {
+    document.getElementById('tab-tester').style.display = '';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════
+function exportCollection() {
+  const collection = {
+    name: "APIPulse Collection",
+    exported: new Date().toISOString(),
+    endpoints: state.endpoints.map(e => ({
+      method: e.method,
+      path: e.path,
+      description: e.desc,
+      tag: e.tag,
+    })),
+    stats: {
+      total: state.totalRequests,
+      success: state.successRequests,
+      errors: state.errorRequests,
+    }
+  };
+  const blob = new Blob([JSON.stringify(collection, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'apipulse-collection.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+updateMethodColor();
+updateStats();
+
+// Simulate some bars in stat trends
+setTimeout(() => {
+  document.querySelectorAll('.sparkline-bar').forEach((b, i) => {
+    const heights = [6,8,10,7,12,9,14,11,16,13,18,15];
+    b.style.height = (heights[i % heights.length] || 8) + 'px';
+  });
+}, 100);
+
+</script>
+</body>
+</html>
